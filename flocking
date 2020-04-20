@@ -1,0 +1,61 @@
+/*--------------------------------------------------*/
+/*---------------Flocking Simulation----------------*/
+/*-----------------Made By: Geert-------------------*/
+/*--------------------------------------------------*/
+
+ArrayList<Boid> boids;
+ArrayList<Predator> predators;
+
+int initBoidAmount = 400;
+int initPredatorAmount = 3;
+
+// Radius that the boids check for cohesion, separation and alignment
+float cohesionRadius = 100;
+float separationRadius = 30;
+float alignmentRadius = 100;
+float predatorRadius = 50;
+float colorRadius = 50;
+float killRadius = 4;
+
+// The strength of the different forces
+float cohesionValue = 0.1;
+float separationValue = 0.5;
+float alignmentValue = 0.5;
+float predatorValue = 5;
+
+float cohesionValuePredator = 1;
+float alignmentValuePredator = 0.2;
+
+void setup() {
+  fullScreen();
+  background(0);
+  colorMode(HSB, 360, 100, 100, 100);
+  boids = new ArrayList<Boid>();
+  for (int i = 0; i < initBoidAmount; i++) {
+    boids.add(new Boid(random(width), random(height)));
+  }
+  predators = new ArrayList<Predator>();
+  for (int i = 0; i < initPredatorAmount; i++) {
+    predators.add(new Predator(random(width), random(height)));
+  }
+}
+
+void draw() {
+  fill(220, 50, 5, 20);
+  rect(0, 0, width, height);
+  
+  for (Boid b : boids) {
+    b.edges();
+    b.flock();
+    b.update();
+    b.updateColors();
+    b.show();
+  }
+  
+  for (Predator p : predators) {
+    p.edges();
+    p.flock();
+    p.update();
+    p.show();
+  }
+}
