@@ -1,0 +1,216 @@
+class Boid {
+
+  // Vectors for basic physics
+  PVector loc;
+  PVector vel;
+  PVector acc;
+
+  float mass;      // Variable which decides the size, max speed and max force
+  float size;
+  int col;
+  int colChange = 15;
+  float maxForce;  // Maximum force for acc
+  float maxSpeed;  // Maximum speed for vel
+  float growthRate = 0.0001;
+  float maxMass = 6;
+
+  Boid(float x, float y) {
+    loc = new PVector(x, y);
+    vel = new PVector();
+    acc = new PVector();
+    mass = random(0, 7);
+  }
+
+  // Basic physics
+  void update() {
+    vel.add(acc);  // Adding acc to vel
+    vel.limit(maxSpeed);    // Limiting the vel to maxspeed
+    loc.add(vel);      // Adding vel to loc
+    acc.mult(0);        // Making the acc 0 to not accumilate forces
+
+    mass += random(growthRate, growthRate*10);
+    if (mass > maxMass) {
+      reset();
+    }
+    size = map(mass, 0, 6, 1, 5);
+    maxForce = map(mass, 0, 6, 0.1, 0.03);
+    maxSpeed = map(mass, 0, 6, 3, 1);
+  }
+
+  // Flock funtion to add all the forces
+  void flock() {
+    // Calculating the forces
+    PVector cohesionForce = cohesion(boids);
+    PVector separationForce = separation(boids);
+    PVector alignmentForce = alignment(boids);
+    PVector predatorForce = avoidPredator(predators);
+
+    // Scaling the forces
+    cohesionForce.mult(cohesionValue);
+    separationForce.mult(separationValue);
+    alignmentForce.mult(alignmentValue);
+    predatorForce.mult(predatorValue);
+
+    // Adding the forces to the acc
+    acc.add(cohesionForce);
+    acc.add(separationForce);
+    acc.add(alignmentForce);
+    acc.add(predatorForce);
+  }
+
+  // Function to calculated the average position of all the boids within a radius
+  PVector cohesion(ArrayList<Boid> boids) {
+    PVector steer = new PVector();  // Vector to keep track of the wanted direction
+    int count = 0;  // Keeping count of boids
+    for (Boid b : boids) {
+      float d = PVector.dist(loc, b.loc);  // Distance between the current boid and the other boid
+      // check if the distance in not zero (itself) and if it is within the radius
+      if (d > 0 && d < cohesionRadius) {
+        steer.add(b.loc);  // Adding the loc of the boid that is too close to the total
+        count++;  // Incrementing the total amount of boids in the radius
+      }
+    }
+    if (count > 0) {
+      steer.div(count);        // Calculating the average vector
+      steer.sub(loc);     // Subtracting loc to get a vector pointing from its current loc the the wanted loc
+      steer.setMag(maxSpeed);  // Setting the length of the vector to maxSpeed
+      steer.sub(vel);     // Craig Reynolds steering formula
+      steer.limit(maxForce);   // Limiting the force
+    }
+    return steer;
+  }
+
+  // Function to calculate the average vector pointing away from other boids to keep space in between them
+  PVector separation(ArrayList<Boid> boids) {
+    PVector steer = new PVector();
+    int count = 0;
+    for (Boid b : boids) {
+      float d = PVector.dist(loc, b.loc);
+      if (d > 0 && d < separationRadius) {
+        steer = PVector.sub(loc, b.loc);
+        steer.div(pow(PVector.dist(loc, b.loc), 2));
+        count++;
+      }
+    }
+    if (count > 0) {
+      steer.div(count);
+      steer.setMag(maxSpeed);
+      steer.sub(vel);
+      steer.limit(maxForce);
+    }
+    return steer;
+  }
+
+  // Funnction to calculate the average vector pointing in the direction other boids within a radius are moving towards
+  PVector alignment(ArrayList<Boid> boids) {
+    PVector steer = new PVector();
+    int count = 0;
+    for (Boid b : boids) {
+      float d = PVector.dist(loc, b.loc);
+      if (d > 0 && d < alignmentRadius) {
+        steer.add(b.vel);
+        count++;
+      }
+    }
+    if (count > 0) {
+      steer.div(count);
+      steer.setMag(maxSpeed);
+      steer.sub(vel);
+      steer.limit(maxForce);
+    }
+    return steer;
+  }
+
+  PVector avoidPredator(ArrayList<Predator> predators) {
+    PVector steer = new PVector();
+    int count = 0;
+    for (Predator p : predators) {
+      float d = PVector.dist(loc, p.loc);
+      if (d > 0 && d < predatorRadius) {
+        steer.add(p.vel);
+        count++;
+      }
+      if (PVector.dist(loc, p.loc) < killRadius) {
+        reset();
+      }
+    }
+    if (count > 0) {
+      steer.div(count);
+      steer.setMag(-maxSpeed);
+      steer.sub(vel);
+      steer.limit(maxForce);
+    }
+    return steer;
+  }
+
+  void edges() {
+    if (loc.x > width || loc.x < 0 || loc.y > height || loc.y < 0) {
+      PVector middle = new PVector(width/2, height/2);
+      PVector steer = PVector.sub(middle, loc);
+      steer.setMag(maxSpeed);
+      steer.sub(vel);
+      steer.limit(maxForce);
+      acc.add(steer);
+    }
+  }
+
+  void reset() {
+    loc = randomOffScreen();
+    vel = PVector.random2D();
+    vel.setMag(random(2, 4));
+    acc = new PVector();
+    mass = random(0, 7);
+    col = (int) random(360);
+  }
+  
+  void updateColors() {
+    int totalC = 0;
+    int total = 0;
+    for (Boid b : boids) {
+      if (PVector.dist(loc, b.loc) < colorRadius) {
+        totalC += b.col;
+        total++;
+      }
+    }
+    if (total > 0) {
+      col = round(totalC / total);
+    }
+    col += (int) random(-colChange, colChange+1);
+    col = constrain(col, 0, 360);
+  }
+
+  // Function to display the boids
+  void show() {
+    float angle = vel.heading() + radians(90);
+    pushMatrix();
+    translate(loc.x, loc.y);
+    rotate(angle);
+    noStroke();
+    fill(col, 50, 50);
+    beginShape();
+    vertex(0, -size*2);
+    vertex(-size, size*2);
+    vertex(size, size*2);
+    endShape(CLOSE);
+    popMatrix();
+  }
+
+  PVector randomOffScreen() {
+    PVector pos = new PVector();
+    int chance = (int) random(4);
+    if (chance == 0) {
+      pos.x = random(-width, 0);
+      pos.y = random(-height, height*2);
+    } else if (chance == 1) {
+      pos.x = random(width, width*2);
+      pos.y = random(-height, height*2);
+    } else if (chance == 2) {
+      pos.y = random(-height, 0);
+      pos.x = random(-width, width*2);
+    } else if (chance == 3) {
+      pos.y = random(height, height*2);
+      pos.x = random(-width, width*2);
+    }
+    return pos;
+  }
+}
