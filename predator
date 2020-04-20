@@ -1,0 +1,43 @@
+class Predator extends Boid {
+
+  Predator(float x, float y) {
+    super(x, y);
+    
+    size = 10;
+    maxForce = 0.4;
+    maxSpeed = 5;
+  }
+  
+  // Basic physics
+  void update() {
+    vel.add(acc);  // Adding acc to vel
+    vel.limit(maxSpeed);    // Limiting the vel to maxspeed
+    loc.add(vel);      // Adding vel to loc
+    acc.mult(0);        // Making the acc 0 to not accumilate forces
+  }
+  
+  // Flock funtion to add all the forces
+  void flock() {
+    // Calculating the forces
+    PVector cohesionForce = cohesion(boids);
+    PVector alignmentForce = alignment(boids);
+
+    // Scaling the forces
+    cohesionForce.mult(cohesionValuePredator);
+    alignmentForce.mult(alignmentValuePredator);
+
+    // Adding the forces to the acc
+    acc.add(cohesionForce);
+    acc.add(alignmentForce);
+  }
+
+  
+  void show() {
+    pushMatrix();
+    translate(loc.x, loc.y);
+    noStroke();
+    fill(0, 84, 64);
+    circle(0, 0, size);
+    popMatrix();
+  }
+}
